@@ -9,13 +9,13 @@ module.exports.command = (req, res, next) => {
 
     if (payload.event.type === "app_mention") {
         if (payload.event.text.includes("tell me a joke")) {
+            
             // Make call to chat.postMessage using bot's token
         }
     }
-  /* const prueba = {
+  const prueba = {
     "me ha llegado": req.body,
     "API": API_SLACK_BOT
-  }
-  console.log(JSON.stringify(prueba))
+  } /*
   res.status(201).json(prueba) */
 }
