@@ -11,6 +11,7 @@ const token = process.env.TOKEN_SLACK;
 const web = new WebClient(token);
 
 module.exports.command = (req, res, next) => {
+  res.json(req.body)
 
   let payload = req.body;
     res.sendStatus(200);
