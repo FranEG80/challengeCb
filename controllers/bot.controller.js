@@ -1,8 +1,13 @@
 
-const { WebClient } = require('@slack/web-api');
-
 const botConfig = require('../config/bot.config')
-const BOT = botConfig.BOT
+const {sendMessage,
+   initGroup,
+   stoppingGroup, 
+   isInTheKeys,
+   isMentioned,
+   addingGroup,
+////creatingGroups
+  } = botConfig.BOT
 
 const template = [
   {
@@ -87,35 +92,35 @@ const template = [
     ]
   }
 ]
+
+
+module.exports.slack = (req, res, next) => { 
+////// Url verification
+  req.body.type === "url_verification"  && res.json(req.body) && res.sendStatus(200)
  
-// Read a token from the environment variables
-const token = process.env.TOKEN_SLACK
- 
-// Initialize
-const web = new WebClient(token);
+  const payload = req.body.event
 
-module.exports.command = (req, res, next) => {  
-  let payload = req.body;
-    res.sendStatus(200);
-    console.log(payload)
-    if ((payload.event.type === "app_mention" && payload.event.text.includes("start")) || payload.event.text.includes("gordify start")) {
-      web.chat.postMessage({
-        text: "eyeyeyeyeyeyyeyeyeyeyeyeye",
-        channel: payload.event.channel,
-      })
-    } else if(payload.event.subtype && payload.event.subtype === "bot_message") {
-      
-    } else if (payload.event.text.includes("gordify")){
-      (async () => {
-        
-        const result = await web.chat.postMessage({
-          text: "eyeyeyeyeyeyyeyeyeyeyeyeye",
-          blocks: template,
-          channel: payload.event.channel,
-        });
+  let {type, subtype, channel, text, user } = payload;
 
-        console.log(`Successfully send message ${result.ts} in conversation #${result.channel}`);
-      })();
-    }
+//////console.log(req.body.event_id, '******************* ')
+//////console.log(req.body.event_time, 'sdafasdf***** ')
 
+  
+//// detecting if is a new message or edited message
+  let message_recived = (subtype === "message_changed") ? payload.message.text.toLowerCase() :  text.toLowerCase();
+
+////// PARA REFACTORIZAR ---------------------------------
+////// buscar como conseguir nombre del bot y cambiarlo en los includes
+  if(subtype === "bot_message" || !message_recived.includes('gordify')) { 
+    res.sendStatus(200)
+    console.log(`This message is ignored`)
+  } else if (isInTheKeys("run", isMentioned(type), message_recived)) {
+    sendMessage(channel, "text", initGroup(channel), res);
+  } else if (isInTheKeys("stop", isMentioned(type), message_recived)){
+    stoppingGroup(channel, res)
+  } else if (isInTheKeys("addToGroup", isMentioned(type), message_recived)) {
+    sendMessage(channel, "text", addingGroup(channel, user), res);
+  } else if (isMentioned(type) || message_recived.includes('gordify')) {
+    sendMessage(channel, "text", 'Lo siento no se que quieres decirme.', res);
+  }
 }
