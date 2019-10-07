@@ -50,6 +50,7 @@ module.exports.BOT.sendMessage = async (channel, event, message, res) => {
       [event]: message,
       channel: channel // botInfo.group.id,
     })
+    console.log(result)
     console.log(`Successfully send message ${result.ts} in conversation ${channel}`);
   } catch (error) {
     if (error.code !== undefined) {
