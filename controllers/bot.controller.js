@@ -8,7 +8,6 @@ const {sendMessage,
    isMentioned,
    addingGroup,
    removingGroup,
-   configure,
    botName,
   } = botConfig.BOT
 
@@ -31,8 +30,6 @@ module.exports.slack = (req, res, next) => {
     initGroup(channel, res);
   } else if (isInTheKeys("stop", isMentioned(type), message_recived)){
     stoppingGroup(channel, res)
-  } else if(isInTheKeys("configure", isMentioned(type), message_recived)) {
-    configure(user, message_recived, res);
   } else if (isInTheKeys("addToGroup", isMentioned(type), message_recived)) {
     addingGroup(channel, user, res);
   } else if (isInTheKeys("removeToGroup", isMentioned(type), message_recived)) {
