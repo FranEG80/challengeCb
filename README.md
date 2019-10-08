@@ -1,7 +1,5 @@
 # challengeCb
 
-# Título del Proyecto
-
 _Slackbot creado para el challege de Cabify, programado para organizar los viernes grupos para ir a comer_
 
 Este bot comienza a buscar los viernes a las 10 y termina a las 12 de forma automática, no obstante, si quieres hacerlo manual puedes cambiar en _config > bot.config.js > BOT.timerBot.status_ a false.
