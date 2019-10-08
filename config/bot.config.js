@@ -6,16 +6,11 @@ const web = new WebClient(token);
 const cron = require('./cron.config')
 const services = require('../services/google.service')
 
-
-//////////////// Create parseo users
-let userParseo = { 'UG51B0XPD': { leader: 0 } }
-for (i = 0; i <= 20; i++) {
-  newUser =
-    userParseo[`UG51B0XED0dfd0--${i}`] = { leader: Math.floor((Math.random() * (3 - 0)) + 0) }
-}
-
 module.exports.BOT = {
-  locationOffice: "40.448952, -3.670866",
+  preferencesRecomendation: {
+    locationOffice: "40.448952, -3.670866",
+    radius: "500",
+  },
   timerBot: {
     status: false, 
     timezone: "Europe/Madrid",
@@ -38,12 +33,74 @@ module.exports.BOT = {
     removeToGroup: ["no voy", "quitame", "desapuntame", "no puedo ir"],
     configure: ["configure"],
   },
-  users: userParseo,
+  users: [],
   grouping: {},
-  recomendations: []
+  recomendations: [],
+  configuration: false,
 
 }
 
+module.exports.BOT.configure = async (user, message_recived, res) => {
+  message_recived = message_recived.split(' ').filter(word=> word !== "gordify" && word !== "configure")
+  let msgInit = {
+    type: "blocks",
+    message:  this.BOT.messageConfig
+  }
+  try {
+    let is_admin = false
+    let configStatus = this.BOT.configuration
+    
+    if (!configStatus) {
+      const userInfo = await web.users.info({user})
+      is_admin = userInfo.user.is_admin
+    }
+    
+    if (!is_admin) {
+      msgInit= {
+        type: "text",
+        message: 'Lo siento! no tienes permisos de configuración, habla con el Administrador de tu espacio'
+      }
+    } else if (is_admin && !configStatus){
+      configStatus = true      
+    } else if (is_admin && configStatus && message_recived.includes('exit')) {
+      configStatus = false
+      msgInit.message = 'Ok! salimos de la configuración'
+    } else if (is_admin && configStatus && message_recived.length > 2) {
+      msgInit.message = 'Me has pasado más parámetros, revisa la orden'
+    } else if (is_admin && configStatus && message_recived.includes('maxPaxGroups')) {
+      this.BOT.maxGroup = message_recived.pop()
+      msgInit.message = `He configurado el número máximo de personas por grupo en ${this.BOT.maxGroup}`
+    } else if (is_admin && configStatus && message_recived.includes('schudle')) {
+      let event = message_recived.pop()
+      this.BOT.timer(event)
+      msgInit.message = `He configurado el timer en ${event}`      
+    } else if (is_admin && configStatus && message_recived.includes('schudleStartAt')) {
+      let time = message_recived.pop().split(":")
+      this.BOT.timerBot.start = {
+        hour: time[0].toString(),
+        minutes:  time[1].toString()
+      }
+      msgInit.message = `He configurado el timer para empezar a las ${time[0]}:${time[1]}`      
+    } else if (is_admin && configStatus && message_recived.includes('schudleStopAt')) {
+      console.log(user)
+      msgInit.message = `He probadond`      
+      //
+    } 
+
+    const imUSer = await web.im.open({user})    
+    this.BOT.sendMessage(imUSer.channel.id, msgInit.type, msgInit.message , res)
+
+  } catch (error) {
+      if (error.code !== undefined) {
+        console.log({
+          Error: error.code,
+          Data: error.data
+        });
+      } else {
+        console.log('Well, that was unexpected.');
+      }
+  }
+}
 
 module.exports.BOT.isMentioned = type => type === "app_mention"
 
@@ -57,7 +114,6 @@ module.exports.BOT.timer = action => {
     cron.task(start.hour, start.minutes, days, timezone  ).stop()
   }
 }
-
 
 module.exports.BOT.isInTheKeys = (inputKey, mentioned, message_recived) => {
   let keys = [...this.BOT.keys[inputKey]]
@@ -93,38 +149,20 @@ module.exports.BOT.sendMessage = async (channel, event, message, res) => {
   }
 }
 
-module.exports.BOT.imDirect = async (user) => {
-  try {
-    const chat = await web.im.open({user})
-    console.log('-------------------------', chat.channel.id)
-    return chat.channel.id
-    //return chat.channel.id
-  } catch (error) {
-    if (error.code !== undefined) {
-      console.log({
-        Error: error.code,
-        Data: error.data
-      });
-    } else {
-      console.log('Well, that was unexpected.');
-    }
-  }
-}
-
 module.exports.BOT.initGroup = (channel, res) => {
-  services.request()
-  .then(resp=>{
-    let result = resp.data.results
-    let recomendation = result.sort(()=>Math.floor(Math.random() * (result.length - 0)) + 0).slice(0,5)
-    this.BOT.recomendations = recomendation.map(el=>{
-      return {
-        name: el.name,
-        vicinity: el.vicinity,
-        rating: el.rating,
-        price_level: el.price_level
-      }
+  services.request(this.BOT.preferencesRecomendation.locationOffice, this.BOT.preferencesRecomendation.radius)
+    .then(resp=>{
+      let result = resp.data.results
+      let recomendation = result.sort(()=>Math.floor(Math.random() * (result.length - 0)) + 0).slice(0,5)
+      this.BOT.recomendations = recomendation.map(el=>{
+        return {
+          name: el.name,
+          vicinity: el.vicinity,
+          rating: el.rating,
+          price_level: el.price_level
+        }
+      })
     })
-  })
     .catch(e=> console.log(e))
 
   let msg = 'apuntate reaccionando a mi mensaje o diciendome que te apuntas'
@@ -148,8 +186,8 @@ module.exports.BOT.stoppingGroup = (channel, res) => {
     message: 'No hemos empezado todavía, si quieres escribe *gordify start*',
     type: 'text',
   }
-
-  if (this.BOT.grouping[channel].users<4) {
+  
+  if (this.BOT.grouping[channel].users.length < 4) {
     this.BOT.grouping[channel].status = false
     msg.message  = `Hoy no se ha apuntado mucha gente, no podemos hacer grupos.... Animaros el próximo día!!!`
   } else if (this.BOT.timerBot.status && this.BOT.grouping[channel].status) {
@@ -168,27 +206,33 @@ module.exports.BOT.addingGroup = (channel, user, res) => {
 
   let msg = `Ey!!! ya contaba contigo <@${user}> :smile::smile::smile:`
 
-  if (this.BOT.timerBot.status || !this.BOT.grouping[channel].status) {
+  if (this.BOT.timerBot.status && !this.BOT.grouping[channel].status) {
     msg  = `Aún no estoy emparejando, tienes que esperar a las ${this.BOT.timerBot.start.hour}:${this.BOT.timerBot.start.minutes} los ${this.BOT.timerBot.days.join(',')}`
   } else if (this.BOT.grouping[channel] === undefined || !this.BOT.grouping[channel].status) {
     msg = `<@${user}> no estamos organizando los grupos! prueba a inciar la búsqueda con *gordify start*`
   } else if (!this.BOT.grouping[channel].users.includes(user)) {
     (this.BOT.users[user] === undefined) ? this.BOT.users[user] = {leader: 0} : null
     this.BOT.grouping[channel].users = [...this.BOT.grouping[channel].users, user]
+    msg = `Ok <@${user}> te apunto a la lista de los grupos!! :note:`
+  } 
+  this.BOT.sendMessage(channel, 'text', msg, res)
+}
 
-//////////////////////// QUITAR!!!!!!! ----------------------- UG51B0XED0dfd06
-////////////////////// Create parseo users
-    for (i = 0; i < 10; i++) {
-      this.BOT.grouping[channel].users = [...this.BOT.grouping[channel].users, `UG51B0XED0dfd0--${i}`]
-    }
-////////////////////// Create parseo users
-    msg = `Ok <@${user}> te apunto a la lista de los grupos!! :smile:`
+module.exports.BOT.removingGroup = (channel, user, res) => {
+
+  let msg = `<@${user}> no puedo quitarte de la lista, no te apuntaste :smile:`
+
+  if (!this.BOT.grouping[channel].status) {
+    msg  = `<@${user}> no puedo quitarte de la lista, no te apuntaste y aun no empecé a buscar :stuck_out_tongue_closed_eyes:`
+  } else if (this.BOT.grouping[channel].users.includes(user)) {
+    msg = `Ohhh!!! Estas seguro? Ok <@${user}> te quito de la lista :note:`
+    this.BOT.grouping[channel].users = this.BOT.grouping[channel].users.filter(el => el !== user)
   } 
   this.BOT.sendMessage(channel, 'text', msg, res)
 }
 
 module.exports.BOT.creatingGroups = (channel, users, res) => {
-  resp = {...res}
+  
 ///////////// Leader
   users.sort((a, b) => this.BOT.users[a].leader - this.BOT.users[b].leader)
   let leaders = []
@@ -241,17 +285,27 @@ module.exports.BOT.creatingGroups = (channel, users, res) => {
     }]
   });
 
-  template = [...template, {
+  template = [...template, this.BOT.creatingRecomendation()]
+
+  return {
+    message: template,
+    type: 'blocks'
+  }
+
+
+}
+
+module.exports.BOT.creatingRecomendation = ()=>{
+  let initTxt = [{
     "type": "section",
     "text": {
       "type": "mrkdwn",
       "text": `\n Como se que es difcil buscar un sitio, he buscado por vosotros algunas recomendaciones: \n\n`
     }
   }]
-
+  
   this.BOT.recomendations.forEach(place=>{
-    console.log('templates............', this.BOT.recomendations)
-    template = [...template, {
+    initTxt = [...initTxt, {
       "type": "section",
       "text": {
         "type": "mrkdwn",
@@ -262,36 +316,58 @@ module.exports.BOT.creatingGroups = (channel, users, res) => {
         "type": "divider"
       }]
   })
-
-  return {
-    message: template,
-    type: 'blocks'
-  }
-
-
+  return initTxt
 }
 
-module.exports.BOT.configure = async (user, res) => {
-  try {
-    let msg='Lo siento! no tienes permisos de configuración, habla con el Administrador de tu espacio'
-    const userInfo = await web.users.info({user})
-    
-    if (!userInfo.user.is_admin){
-      msg = "Bienvenido a la configuración!!"
+module.exports.BOT.messageConfig =  [
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": "*Bienvenido a la configuración de GordifyBot:*"
     }
-
-    const imUSer = await web.im.open({user})
-    
-    this.BOT.sendMessage(imUSer.channel.id, "text", msg, res)
-
-  } catch (error) {
-      if (error.code !== undefined) {
-        console.log({
-          Error: error.code,
-          Data: error.data
-        });
-      } else {
-        console.log('Well, that was unexpected.');
+  },
+  {
+    "type": "context",
+    "elements": [
+      {
+        "type": "mrkdwn",
+        "text": "*orden*: desripción \n Escribe `gordify 'orden' 'parametro'` y aplicaré la configuración "
       }
+    ]
+  },
+  {
+    "type": "divider"
+  },
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": ":arrow_right: *Numero máximo de personas por grupos*\n\n Configura cuantas personas maximo van por grupo \n\n  *   maxPaxGroups*: Indica un número `gordify maxPaxGroups 5` \n"
+    }
+  },
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": ":arrow_right: *Temporizador*\n\n Activa/desactiva el temporizador, configure los días y a que hora empieza o termina \n\n  *   schudle start*: Inicia el temporizador \n  *   schudle stop*: Para el temporizador \n  *   schudleStartAt XX:XX*: Fija el inicio de la busqueda a la hora indicada, recuerda indicar la hora en formato 24horas (ejemplo: `gordify schudleStartAt 13:00`) \n  *   schudleStopAt XX:XX*: Fija la finalización de la busqueda a la hora indicada, recuerda indicar la hora en formato 24horas (ejemplo: `gordify schudleStopAt 15:00`) \n  *   SchudleAtDays*: Indica que días iniciaremos la busqueda, recuerda en ingles y separados por una coma (ejemplo `gordify SchudleAtDays monday,friday` \n"
+    }
+  },
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": ":arrow_right: *Preferencias recomendación de lugares*\n\n Configura ubicación, radio de busqueda en las recomendaciones \n\n  *   locationCoords*: Fija tu ubicación (ejemplo: `gordify location 40.448952,-3.670866`) \n  *   locationRadius*: Fija el radio de de la busqueda de lugares, recuerda ponerlo en metros (ejemplo: `gordify locationRadius 500`) \n"
+    }
+  },
+  {
+    "type": "section",
+    "text": {
+      "type": "mrkdwn",
+      "text": ":arrow_right: *Salir de la configuración*\n\n  *   exit*: Sales de la configuración\n"
+    }
+  },
+  {
+    "type": "divider"
   }
-}
+]

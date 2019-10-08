@@ -7,6 +7,7 @@ const {sendMessage,
    isInTheKeys,
    isMentioned,
    addingGroup,
+   removingGroup,
    configure,
    botName,
   } = botConfig.BOT
@@ -31,9 +32,11 @@ module.exports.slack = (req, res, next) => {
   } else if (isInTheKeys("stop", isMentioned(type), message_recived)){
     stoppingGroup(channel, res)
   } else if(isInTheKeys("configure", isMentioned(type), message_recived)) {
-    configure(user, res);
+    configure(user, message_recived, res);
   } else if (isInTheKeys("addToGroup", isMentioned(type), message_recived)) {
     addingGroup(channel, user, res);
+  } else if (isInTheKeys("removeToGroup", isMentioned(type), message_recived)) {
+    removingGroup(channel, user, res);
   } else if (isMentioned(type) || message_recived.includes('gordify')) {
     sendMessage(channel, "text", 'Lo siento no se que quieres decirme.', res);
   }
