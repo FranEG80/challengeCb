@@ -124,7 +124,9 @@ module.exports.BOT.stoppingGroup = (channel, res) => {
     type: 'text',
   }
   
-  if (this.BOT.grouping[channel].users.length < 4) {
+  if (this.BOT.timerBot.status && this.BOT.grouping[channel] === undefined) {
+    msg.message  = `Aún no hemos empezado, estoy programado para empezar a las ${this.BOT.timerBot.start.hour}:${this.BOT.timerBot.start.minutes} los ${this.BOT.timerBot.days.join(',')}`
+  } else if (this.BOT.grouping[channel].users.length < 4) {
     this.BOT.grouping[channel].status = false
     msg.message  = `Hoy no se ha apuntado mucha gente, no podemos hacer grupos.... Animaros el próximo día!!!`
   } else if (this.BOT.timerBot.status && this.BOT.grouping[channel].status) {
@@ -132,7 +134,10 @@ module.exports.BOT.stoppingGroup = (channel, res) => {
   } else if (this.BOT.timerBot.status || !this.BOT.grouping[channel].status) {
     msg.message  = `Aún no he empezado los emparejamientos, si quieres empezar la busqueda de forma manual, habla con el Administrador`
   } else if (this.BOT.grouping[channel] !== undefined && this.BOT.grouping[channel].status === true) {
-    this.BOT.grouping[channel].status = false
+    this.BOT.grouping[channel]= {
+      status: false,
+      users: []
+    }
     msg = this.BOT.creatingGroups(channel, this.BOT.grouping[channel].users)
   }
 
