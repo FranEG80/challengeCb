@@ -8,6 +8,7 @@ const createError = require('http-errors')
 require('dotenv').config()
 
 const botRouter = require('./routes/bot.route');
+const botConfig = require('./config/bot.config');
 
 const app = express();
 
@@ -17,12 +18,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use((req, res, next) => {
-  // console.log("-------------------");
-  // console.log(req.body);
-  if (req.body.payload) req.body.payload = JSON.parse(req.body.payload);
-  next();
-});
+//botConfig.BOT.timer("start")
 
 app.use('/', botRouter);
 

@@ -1,5 +1,6 @@
 
 const botConfig = require('../config/bot.config')
+
 const {sendMessage,
    initGroup,
    stoppingGroup, 
@@ -12,7 +13,6 @@ const {sendMessage,
 
 
 module.exports.slack = (req, res, next) => { 
-  
 ////// Url verification
   req.body.type === "url_verification"  && res.json(req.body) && res.sendStatus(200)
  
@@ -20,13 +20,9 @@ module.exports.slack = (req, res, next) => {
 
   let {type, subtype, channel, text, user } = payload;
 
-
-  
 //// detecting if is a new message or edited message
   let message_recived = (subtype === "message_changed") ? payload.message.text.toLowerCase() :  text.toLowerCase();
 
-////// PARA REFACTORIZAR ---------------------------------
-////// buscar como conseguir nombre del bot y cambiarlo en los includes
   if(subtype === "bot_message" || !message_recived.includes(botName)) { 
     res.sendStatus(200)
     console.log(`This message is ignored`)
