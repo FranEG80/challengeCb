@@ -31,7 +31,6 @@ module.exports.BOT = {
     stop: ["stop", "end"],
     addToGroup: ["yo", "voy", "apuntame"],
     removeToGroup: ["no voy", "quitame", "desapuntame", "no puedo ir"],
-    configure: ["configure"],
   },
   users: [],
   grouping: {},
